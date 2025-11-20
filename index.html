@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <style>
+ body {
+     font-family: arial;
+	 text-align: center;
+	 margin-top: 5px;
+	 display:block;
+ }
+ input{
+    font-size: 20px;
+	padding: 14px;
+	margin: 14px;
+	width: 60%;
+	margin: 0 auto;
+	display:block;
+	border: 1px solid blue;
+	border-radius: 8px;
+ }
+
+ button {
+ display:block;
+ margin: 20px auto 0;
+ font-size: 20px;
+ padding: 14px;
+ background-color: lightblue;
+ 
+
+ }
+ button:hover {
+       color:#fff
+       background-color: blue;
+ }
+ #status {
+    font-size: 20px;
+
+ }
+ </style>
+</head>
+<body>
+ <h1>Enviar Localização</h1>
+ <p>Insira o email e pressione o botão para enviar os dados (email e localização).</p>
+ <input type="email" id="email" placeholder="Insira email" required>
+ <button onclick="getLocation()">Enviar Localização</button>
+ <p id="status">Clique no botão para enviar dados.</p>
+ <script>
+ // Coordenadas do local alvo (latitude e longitude)
+ const targetLatitude = 42.03188; // Latitude da Loja
+ const targetLongitude = -8.63318; // Longitude da Loja
+ // URL do Webhook do Make
+ const makeWebhookURL = "https://hook.eu1.make.com/ms7fwg3lgyzwgx4zrbjb1kuycu1csu5k"; // Substituir pelo nossob Webhook do Make
+ // Função para capturar a localização do utilizador
+ function getLocation() {
+ const email = document.getElementById("email").value;
+ if (!email) {
+ document.getElementById("status").innerHTML = "Por favor, insira um email válido.";
+ return;
+ }
+ if (navigator.geolocation) {
+ navigator.geolocation.getCurrentPosition(
+ (position) => calculateDistanceAndSend(position, email),
+ showError
+ );
+ } else {
+ document.getElementById("status").innerHTML = "A Geolocalização não é suportada pelo navegador.";
+ }
+ }
+ // Função para calcular a distância e enviar os dados para o Webhook do Make
+ function calculateDistanceAndSend(position, email) {
+ const userLatitude = position.coords.latitude;
+ const userLongitude = position.coords.longitude;
+ // Calcular a distância entre o utilizador e a loja
+ const distance = calculateDistance(userLatitude, userLongitude, targetLatitude, targetLongitude);
+ // Atualizar o status para informar que os dados foram enviados
+ document.getElementById("status").innerHTML = `Distância calculada: ${distance.toFixed(2)} km.
+Enviando dados...`;
+ // Dados a serem enviados para o Make
+ const data = {
+ email: email,
+ distance: distance.toFixed(2), // Enviar a distância com 2 casas decimais
+ timestamp: new Date().toLocaleString()
+ };
+ // Enviar os dados para o Webhook do Make
+ fetch(makeWebhookURL, {
+ method: "POST",
+ headers: {
+ "Content-Type": "application/json"
+ },
+ body: JSON.stringify(data)
+ }).then(response => {
+ if (response.ok) {
+ document.getElementById("status").innerHTML = "Dados enviados com sucesso! Aguarde o email.";
+ } else {
+ document.getElementById("status").innerHTML = "Erro ao enviar os dados.";
+ }
+ }).catch(error => {
+ document.getElementById("status").innerHTML = "Erro na ligação com o Make: " + error.message;
+ });
+ }
+ // Função para calcular a distância entre dois pontos geográficos (em km)
+ function calculateDistance(lat1, lon1, lat2, lon2) {
+ const R = 6371; // Raio da Terra Km
+ const φ1 = lat1 * Math.PI / 180; // Converter latitude para radianos
+ const φ2 = lat2 * Math.PI / 180;
+ const Δφ = (lat2 - lat1) * Math.PI / 180;
+ const Δλ = (lon2 - lon1) * Math.PI / 180;
+ const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+ Math.cos(φ1) * Math.cos(φ2) *
+ Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+ const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+ return R * c; // Distância em Km
+ }
+ // Função para tratar erros de geolocalização
+ function showError(error) {
+ switch (error.code) {
+ case error.PERMISSION_DENIED:
+ document.getElementById("status").innerHTML = "O Utilizador negou a solicitação de geolocalização.";
+ break;
+ case error.POSITION_UNAVAILABLE:
+ document.getElementById("status").innerHTML = "Informações de localização não estão disponíveis.";
+ break;
+ case error.TIMEOUT:
+ document.getElementById("status").innerHTML = "A solicitação expirou.";
+ break;
+ case error.UNKNOWN_ERROR:
+ document.getElementById("status").innerHTML = "Ocorreu um erro desconhecido.";
+ break;
+ }
+ }
+ </script>
+</body>
+</html>
